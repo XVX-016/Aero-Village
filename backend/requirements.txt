@@ -1,5 +1,5 @@
 fastapi
-uvicorn
+uvicorn[standard]
 geopandas
 rasterio
 shapely
@@ -7,3 +7,5 @@ pyproj
 pdal
 whitebox
 reportlab
+pandas
+python-multipart

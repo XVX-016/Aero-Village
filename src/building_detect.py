@@ -29,7 +29,6 @@ for tile in tiles:
 
     with torch.no_grad():
         pred = model(img)
-        # Apply sigmoid and threshold
         mask = (torch.sigmoid(pred).squeeze().cpu().numpy() > 0.5).astype(np.uint8)
 
     meta.update(count=1, dtype="uint8")
