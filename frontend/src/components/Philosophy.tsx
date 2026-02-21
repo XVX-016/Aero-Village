@@ -6,10 +6,10 @@ export const Philosophy = () => {
             <div className="container mx-auto px-4 relative z-10">
                 <div className="max-w-5xl mx-auto glass-card p-12 md:p-20 rounded-[48px] border-white/20 shadow-2xl space-y-12">
                     <div className="text-center space-y-8">
-                        <h2 className="text-sm font-bold text-primary uppercase tracking-[0.3em] opacity-80">OUR MISSION</h2>
+                        <h2 className="text-sm font-bold text-[#003366] uppercase tracking-[0.3em] opacity-80">OUR MISSION</h2>
                         <div className="space-y-6">
                             <p className="text-4xl md:text-6xl font-bold leading-tight tracking-tighter">
-                                Mapping the future of <span className="text-primary italic">rural governance</span>, one footprint at a time.
+                                Mapping the future of <span className="text-[#003366] italic">rural governance</span>, one footprint at a time.
                             </p>
                             <p className="text-lg md:text-xl text-white/70 font-medium leading-relaxed max-w-2xl mx-auto pt-4">
                                 SMAVITA is more than a mapping tool. It's an intelligence platform designed to bridge the gap between

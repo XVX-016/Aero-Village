@@ -52,7 +52,7 @@ const CapabilitiesSection = () => {
               <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                 <cap.icon className="w-7 h-7 text-primary group-hover:text-primary-foreground transition-colors" />
               </div>
-              <h3 className="text-xl font-bold text-secondary mb-3">{cap.title}</h3>
+              <h3 className="text-xl font-bold text-[#003366] mb-3">{cap.title}</h3>
               <p className="text-muted-foreground leading-relaxed">{cap.description}</p>
             </motion.div>
           ))}

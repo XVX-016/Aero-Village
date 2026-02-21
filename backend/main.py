@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import json
@@ -79,28 +79,28 @@ async def get_statistics():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/upload")
+async def upload_image(file: UploadFile = File(...)):
+    """Upload drone imagery for analysis"""
+    try:
+        # In production, we would save the file and trigger an AI pipeline
+        # For now, we simulate a successful upload and return metadata
+        return {
+            "status": "success",
+            "filename": file.filename,
+            "content_type": file.content_type,
+            "message": "Imagery received and queued for spatial extraction",
+            "extraction_id": "ext_982341",
+            "metadata": {
+                "coordinates": [34.123, -118.456],
+                "altitude_m": 120,
+                "sensor": "Zenmuse P1"
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/rag/query")
-async def rag_query(request: dict):
-    """RAG query endpoint for infrastructure planning"""
-    query = request.get("query", "")
-    
-    # Placeholder RAG logic - in production, this would connect to a vector DB
-    response = {
-        "response": f"Based on your query: '{query}', I recommend analyzing the village layout and infrastructure requirements. This is a placeholder response that would be replaced with actual RAG retrieval.",
-        "suggestions": []
-    }
-    
-    # Simple keyword matching for demo
-    if "sewage" in query.lower() or "pipeline" in query.lower():
-        response["suggestions"].append({
-            "type": "sewage",
-            "description": "Sewage pipeline installation recommended",
-            "gradient": "2.5%",
-            "population_served": "1,200",
-            "impact_analysis": "Minimal"
-        })
-    
-    return response
 
 @app.get("/api/health")
 async def health_check():

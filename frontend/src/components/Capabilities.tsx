@@ -4,25 +4,25 @@ import { Layout, Cpu, LineChart, FileOutput } from "lucide-react";
 
 const capabilities = [
     {
-        icon: <Cpu className="w-8 h-8 text-primary" />,
+        icon: <Cpu className="w-8 h-8 text-[#003366]" />,
         title: "ML Data Extraction",
         description: "Automatically detect buildings, roads, vegetation, and water bodies.",
         spec: "AI Powered"
     },
     {
-        icon: <Layout className="w-8 h-8 text-primary" />,
+        icon: <Layout className="w-8 h-8 text-[#003366]" />,
         title: "RAG Planning Engine",
         description: "Suggest optimal sewage, electricity, and road layouts using AI.",
         spec: "Suggestive AI"
     },
     {
-        icon: <LineChart className="w-8 h-8 text-primary" />,
+        icon: <LineChart className="w-8 h-8 text-[#003366]" />,
         title: "Village Analytics",
         description: "Real-time stats: building density, NDVI vegetation index, infrastructure coverage.",
         spec: "Live Analysis"
     },
     {
-        icon: <FileOutput className="w-8 h-8 text-primary" />,
+        icon: <FileOutput className="w-8 h-8 text-[#003366]" />,
         title: "Data Export",
         description: "Export ML outputs and planning suggestions in GIS, CSV, or PDF formats.",
         spec: "Multi-Format"
@@ -51,14 +51,14 @@ export const Capabilities = () => {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ delay: index * 0.1 }}
-                            className="p-8 rounded-[32px] glass-card hover:translate-y-[-8px] group"
+                            className="p-8 rounded-[32px] glass-card hover:translate-y-[-8px] group flex flex-col items-center text-center justify-between h-full"
                         >
-                            <div className="mb-6 p-4 rounded-2xl bg-white/10 group-hover:bg-primary/20 transition-colors w-fit">
+                            <div className="mb-6 p-4 rounded-2xl bg-white/10 group-hover:bg-[#003366]/20 transition-colors w-fit">
                                 {cap.icon}
                             </div>
                             <h3 className="text-xl font-bold text-white mb-3 tracking-tight">{cap.title}</h3>
                             <p className="text-white/70 mb-6 line-clamp-3 leading-relaxed text-sm font-medium">{cap.description}</p>
-                            <div className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] bg-primary/10 w-fit px-3 py-1 rounded-full border border-primary/20">
+                            <div className="text-[10px] font-bold text-[#003366] uppercase tracking-[0.2em] bg-[#003366]/10 w-fit px-3 py-1 rounded-full border border-[#003366]/20 mt-auto">
                                 {cap.spec}
                             </div>
                         </motion.div>
