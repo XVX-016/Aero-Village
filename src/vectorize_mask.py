@@ -1,8 +1,8 @@
 import rasterio
 from rasterio.features import shapes
 import geopandas as gpd
-from shapely.geometry import shape
 import os
+
 
 def vectorize(mask_path, output_path):
     if not os.path.exists(mask_path):
@@ -10,32 +10,31 @@ def vectorize(mask_path, output_path):
         return
 
     with rasterio.open(mask_path) as src:
-        image = src.read(1) # mask is band 1
+        image = src.read(1)
         mask = (image > 0)
-        
-        # Generator for shapes
+
         results = (
-            {'properties': {'raster_val': v}, 'geometry': s}
+            {"properties": {"raster_val": int(v)}, "geometry": s}
             for i, (s, v) in enumerate(
                 shapes(image, mask=mask, transform=src.transform)
             )
         )
-        
-        # Convert to list of shapely geometries
+
         geoms = list(results)
         if not geoms:
             print("No polygons found in mask.")
             return
 
-        # Create GeoDataFrame
         df = gpd.GeoDataFrame.from_features(geoms, crs=src.crs)
-        
-        # Optional: Simplify polygons slightly or filter by area if needed
-        # df['geometry'] = df.geometry.simplify(0.1)
-        
-        # Save to GeoJSON
-        df.to_file(output_path, driver='GeoJSON')
+        df = df[df["raster_val"] > 0].copy()
+        if df.empty:
+            print("No positive polygons after filtering.")
+            return
+
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+        df.to_file(output_path, driver="GeoJSON")
         print(f"Vectorized {len(df)} features to {output_path}")
 
+
 if __name__ == "__main__":
-    vectorize('building_mask.tif', 'building_footprints.geojson')
+    vectorize("outputs/building_mask.tif", "outputs/building_footprints.geojson")

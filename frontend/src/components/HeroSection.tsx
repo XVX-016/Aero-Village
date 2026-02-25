@@ -80,7 +80,7 @@ const HeroSection = () => {
             >
               <img
                 src={droneImg}
-                alt="SmaVita Drone"
+                alt="Aerovillage Drone"
                 className="w-full h-full object-contain drop-shadow-2xl"
               />
             </motion.div>

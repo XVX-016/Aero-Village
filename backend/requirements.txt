@@ -9,3 +9,9 @@ whitebox
 reportlab
 pandas
 python-multipart
+SQLAlchemy
+GeoAlchemy2
+psycopg2-binary
+pgvector
+networkx
+scikit-learn

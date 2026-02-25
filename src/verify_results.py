@@ -17,4 +17,4 @@ def verify_mask(mask_path):
             print("Verification warning: No buildings detected. Check input data and model.")
 
 if __name__ == "__main__":
-    verify_mask('building_mask.tif')
+    verify_mask("outputs/building_mask.tif")

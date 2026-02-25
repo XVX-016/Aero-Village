@@ -5,7 +5,7 @@ export const Footer = () => {
         <footer className="relative z-10 py-16 border-t border-white/5 bg-[#0B1215] backdrop-blur-xl">
             <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-12">
                 <div className="col-span-1 md:col-span-1 space-y-6">
-                    <h3 className="text-2xl font-bold text-white tracking-tighter">SMAVITA</h3>
+                    <h3 className="text-2xl font-bold text-white tracking-tighter">Aerovillage</h3>
                     <p className="text-[#A0AEC0] text-sm leading-relaxed max-w-xs">
                         Smart Village Intelligence Platform. Empowering rural India through GeoAI innovation and precision mapping.
                     </p>
@@ -54,7 +54,7 @@ export const Footer = () => {
                 </div>
             </div>
             <div className="container mx-auto px-4 mt-16 pt-8 border-t border-white/5 text-center text-sm text-[#A0AEC0]">
-                © 2026 SMAVITA Intelligence Platform. Built for rural progress.
+                (c) 2026 Aerovillage Intelligence Platform. Built for rural progress.
             </div>
         </footer>
     );

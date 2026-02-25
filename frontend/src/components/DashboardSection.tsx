@@ -3,7 +3,7 @@ import { Upload, Send, Bot, FileImage } from "lucide-react";
 import { useState } from "react";
 
 const sampleMessages = [
-  { role: "assistant" as const, text: "Welcome to SmaVita RAG Analysis. Upload village data or ask me anything about smart village planning." },
+  { role: "assistant" as const, text: "Welcome to Aerovillage RAG Analysis. Upload village data or ask me anything about smart village planning." },
 ];
 
 const DashboardSection = () => {
@@ -21,7 +21,7 @@ const DashboardSection = () => {
           className="text-center mb-16"
         >
           <h2 className="text-4xl md:text-5xl font-bold text-secondary mb-4">
-            SmaVita Dashboard
+            Aerovillage Dashboard
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Upload imagery, extract insights, and interact with our AI analysis engine.

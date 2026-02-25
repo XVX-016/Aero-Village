@@ -1,5 +1,5 @@
-# Drone-to-Panchayat: Automated Rural Property Mapping
-### SVAMITVA Smart Village Intelligence Platform
+# Aerovillage: Automated Rural Property Mapping
+### Aerovillage Smart Village Intelligence Platform
 
 > **The Problem**: Manual property surveys for local Panchayats are slow, expensive, and error-prone. This creates bottlenecks in land records and delays government revenue assessment.
 > **The Solution**: An automated GeoAI pipeline that converts raw drone imagery into GIS-ready building intelligence in minutes.
@@ -40,11 +40,24 @@ To see the AI in action without running any code:
 ## Power User: Full Pipeline Execution
 To run the full-resolution pipeline locally:
 1. `pip install -r requirements.txt`
-2. `python src/tile_ortho.py` (Tiling)
-3. `python src/building_detect.py` (AI Inference)
-4. `python src/merge_masks.py` (Raster Reconstruction)
-5. `python src/vectorize_mask.py` (Vectorization)
-6. `python src/compute_stats.py` (Spatial Intelligence)
+2. `python src/run_pipeline.py --input data/processed/orthophoto_rgb.tif --weights models/building_unet_resnet34.pth`
+3. Outputs include:
+   - `outputs/building_mask.tif`
+   - `outputs/building_confidence.tif`
+   - `outputs/building_footprints.geojson`
+   - `outputs/building_stats.csv`
+   - `outputs/artifacts/metadata.json`
+
+## Backend Project Runs
+- Upload and queue a project-scoped run via `POST /api/upload?run_pipeline=true`.
+- List projects via `GET /api/projects?status=queued&limit=50&offset=0`.
+- Poll status via `GET /api/projects/{project_id}/status`.
+- Fetch output file locations via `GET /api/projects/{project_id}/artifacts`.
+- Ingest project footprints into PostGIS via `POST /api/projects/{project_id}/ingest`.
+- Query DB-backed features via `GET /api/projects/{project_id}/features?limit=500&offset=0`.
+- Query DB-backed summary via `GET /api/projects/{project_id}/features/summary`.
+- Pipeline completion auto-ingests footprints into DB with idempotent source-hash checks and ingestion versioning.
+- Persist planning paths by passing `project_id` to planning APIs; query via `GET /api/projects/{project_id}/planning`.
 
 ---
 *“Mapping the future of rural governance, one footprint at a time.”*

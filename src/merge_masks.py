@@ -1,21 +1,21 @@
+import glob
 import os
+
 import rasterio
 from rasterio.merge import merge
-import glob
 
-def merge_masks(input_dir, output_path):
-    files = glob.glob(os.path.join(input_dir, "*.tif"))
+
+def merge_masks(input_dir, output_path, pattern="tile_*.tif", dtype="uint8", nodata=0):
+    files = glob.glob(os.path.join(input_dir, pattern))
     if not files:
         print("No files found to merge.")
         return
 
-    src_files_to_mosaic = []
-    for f in files:
-        src = rasterio.open(f)
-        src_files_to_mosaic.append(src)
-
-    # Use rasterio.merge to handle tiling and geotransform correctly
-    mosaic, out_trans = merge(src_files_to_mosaic)
+    src_files_to_mosaic = [rasterio.open(f) for f in sorted(files) if os.path.basename(f) != os.path.basename(output_path)]
+    if not src_files_to_mosaic:
+        print("No matching tile files found to merge.")
+        return
+    mosaic, out_trans = merge(src_files_to_mosaic, nodata=nodata)
 
     out_meta = src_files_to_mosaic[0].meta.copy()
     out_meta.update({
@@ -25,17 +25,19 @@ def merge_masks(input_dir, output_path):
         "transform": out_trans,
         "count": 1,
         "compress": "deflate",
-        "dtype": "uint8"
+        "dtype": dtype,
+        "nodata": nodata
     })
 
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     with rasterio.open(output_path, "w", **out_meta) as dest:
-        dest.write(mosaic)
+        dest.write(mosaic.astype(dtype))
 
-    # Clean up
     for src in src_files_to_mosaic:
         src.close()
 
     print(f"Saved merged mask to: {output_path}")
 
+
 if __name__ == "__main__":
-    merge_masks('outputs', 'building_mask.tif')
+    merge_masks("outputs", "outputs/building_mask.tif")

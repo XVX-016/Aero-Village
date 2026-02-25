@@ -12,7 +12,7 @@ export const Philosophy = () => {
                                 Mapping the future of <span className="text-[#003366] italic">rural governance</span>, one footprint at a time.
                             </p>
                             <p className="text-lg md:text-xl text-white/70 font-medium leading-relaxed max-w-2xl mx-auto pt-4">
-                                SMAVITA is more than a mapping tool. It's an intelligence platform designed to bridge the gap between
+                                Aerovillage is more than a mapping tool. It's an intelligence platform designed to bridge the gap between
                                 aerial data and actionable social impact, ensuring every village is seen, mapped, and empowered.
                             </p>
                         </div>

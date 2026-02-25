@@ -11,7 +11,7 @@ const Navbar = () => {
           <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-xl">
             <div className="w-4 h-4 bg-white rounded-sm rotate-45" />
           </div>
-          SMAVITA
+          Aerovillage
         </a>
 
         <div className="hidden md:flex items-center gap-10">

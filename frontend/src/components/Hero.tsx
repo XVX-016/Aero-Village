@@ -45,7 +45,7 @@ export const Hero = () => {
                         — A new space —
                     </span>
                     <h1 className="text-8xl md:text-[10rem] font-bold tracking-tighter text-white drop-shadow-2xl leading-none">
-                        SMAVITA
+                        Aerovillage
                     </h1>
                     <div className="relative group">
                         <div className="absolute inset-0 bg-white/20 blur-xl group-hover:bg-white/30 transition-all rounded-full" />
