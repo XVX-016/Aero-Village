@@ -8,6 +8,7 @@ venv/
 env/
 ENV/
 .venv/
+backend/venv/
 
 # Python cache
 __pycache__/
@@ -20,6 +21,7 @@ __pycache__/
 data/processed/
 outputs/
 tiles/
+uploads/
 *.tif
 *.tiff
 
