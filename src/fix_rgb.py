@@ -1,5 +1,4 @@
 import rasterio
-import numpy as np
 import os
 
 src_path = "data/processed/orthophoto.tif"

@@ -1,6 +1,4 @@
 import rasterio
-from rasterio.io import MemoryFile
-from rasterio.enums import Resampling
 
 def check_metadata(file_path):
     with rasterio.open(file_path) as src:
