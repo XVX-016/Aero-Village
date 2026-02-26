@@ -28,7 +28,7 @@ from pipelines.dtm import DTMProcessor
 from pipelines.electricity import ElectricityPlanner
 from pipelines.hydrology import HydrologySimulator
 from pipelines.procurement import ProcurementEngine
-from pipelines.rag_pipeline import RAGPipeline
+from rag.service import HybridRAGService
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("aerovillage.api")
@@ -52,7 +52,6 @@ PROJECTS_DIR = OUTPUTS_DIR / "projects"
 UPLOADS_DIR = BASE_DIR / "uploads"
 PIPELINE_ENTRYPOINT = BASE_DIR / "src" / "run_pipeline.py"
 DEFAULT_WEIGHTS = BASE_DIR / "models" / "building_unet_resnet34.pth"
-WEB_GEOJSON_PATH = BASE_DIR / "web_demo" / "data" / "building_footprints.geojson"
 WORKER_POLL_SECONDS = 5
 RUNNING_PROJECTS: Set[str] = set()
 RUNNING_LOCK = threading.Lock()
@@ -648,7 +647,7 @@ async def get_buildings(project_id: Optional[str] = None) -> Dict[str, Any]:
     if project_id:
         geojson_path = _project_dir(project_id) / "building_footprints.geojson"
     else:
-        geojson_path = WEB_GEOJSON_PATH if WEB_GEOJSON_PATH.exists() else OUTPUTS_DIR / "building_footprints.geojson"
+        geojson_path = OUTPUTS_DIR / "building_footprints.geojson"
     if not geojson_path.exists():
         raise HTTPException(status_code=404, detail="Building data not found")
     with geojson_path.open("r", encoding="utf-8") as f:
@@ -854,26 +853,22 @@ async def ingest_policy(request: Dict[str, Any], db: Session = Depends(get_db)) 
     title = request.get("title", "Unnamed Policy")
     content = request.get("content", "")
     source = request.get("source", "Manual Upload")
-    rag = RAGPipeline(db)
-    try:
-        chunks = rag.ingest_policy(title, content, source)
-    except NotImplementedError as exc:
-        raise HTTPException(status_code=501, detail=str(exc)) from exc
+    project_id = request.get("project_id")
+    rag = HybridRAGService(db=db, base_dir=BASE_DIR)
+    chunks = rag.ingest_policy(title=title, content=content, source=source, project_id=project_id)
     return {"status": "success", "message": f"Policy '{title}' indexed into {chunks} chunks."}
 
 
 @app.post("/api/rag/query")
 @app.post("/api/rag/explain")
 async def explain_compliance(request: Dict[str, Any], db: Session = Depends(get_db)) -> Dict[str, Any]:
-    query = request.get("query", "")
+    query = (request.get("query") or request.get("question") or "").strip()
+    project_id = (request.get("project_id") or "global").strip()
     if not query:
         raise HTTPException(status_code=400, detail="query is required")
-    rag = RAGPipeline(db)
-    try:
-        analysis = rag.check_compliance(query)
-    except NotImplementedError as exc:
-        raise HTTPException(status_code=501, detail=str(exc)) from exc
-    return {"status": "success", "analysis": analysis}
+    rag = HybridRAGService(db=db, base_dir=BASE_DIR)
+    result = rag.query(project_id=project_id, question=query)
+    return {"status": "success", **result}
 
 
 @app.post("/api/procurement/estimate")
