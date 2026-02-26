@@ -59,5 +59,24 @@ To run the full-resolution pipeline locally:
 - Pipeline completion auto-ingests footprints into DB with idempotent source-hash checks and ingestion versioning.
 - Persist planning paths by passing `project_id` to planning APIs; query via `GET /api/projects/{project_id}/planning`.
 
+## Hybrid RAG API
+- Ingest policy/report text chunks via `POST /api/rag/ingest` with body:
+  - `title`, `content`, optional `source`, optional `project_id`.
+- Query copilot via `POST /api/rag/query` (or `/api/rag/explain`) with body:
+  - `project_id`, `query` (or `question`).
+- Hybrid retrieval combines:
+  - Structured project context (features, planning, ingestion manifest/version).
+  - Retrieved text chunks from `rag_documents`.
+
+Environment variables for Ollama model routing:
+- `OLLAMA_URL` (default `http://localhost:11434`)
+- `OLLAMA_MODEL_REASONING` (default `deepseek`)
+- `OLLAMA_MODEL_SUMMARY` (default `qwen`)
+
+## Frontend Firebase Config
+- Do not commit Firebase keys directly in source files.
+- Copy `frontend/.env.example` to `frontend/.env.local` and set values there.
+- Vite reads only `VITE_*` variables, used by `frontend/src/lib/firebase.ts`.
+
 ---
 *“Mapping the future of rural governance, one footprint at a time.”*
