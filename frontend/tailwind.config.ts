@@ -88,6 +88,6 @@ export default {
       },
     },
   },
-  // @ts-ignore
+  // @ts-expect-error
   plugins: [require("tailwindcss-animate")],
 };
