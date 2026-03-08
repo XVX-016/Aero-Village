@@ -11,6 +11,8 @@ const Upload = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState<null | 'success' | 'error'>(null);
     const [spatialMeta, setSpatialMeta] = useState<any>(null);
+    const [projectId, setProjectId] = useState<string | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [opacity, setOpacity] = useState(0.8);
     const [radius, setRadius] = useState(1);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -45,6 +47,10 @@ const Upload = () => {
         const formData = new FormData();
         formData.append('file', files[0]);
 
+        // Create preview URL
+        const url = URL.createObjectURL(files[0]);
+        setPreviewUrl(url);
+
         try {
             const response = await fetch('http://localhost:8000/api/upload', {
                 method: 'POST',
@@ -54,6 +60,7 @@ const Upload = () => {
             const data = await response.json();
             if (response.ok) {
                 setUploadStatus('success');
+                setProjectId(data.project_id);
                 setSpatialMeta(data.spatial_metadata || { has_spatial: false });
 
                 if (data.spatial_metadata?.has_spatial && map.current && data.spatial_metadata.bounds) {
@@ -69,6 +76,28 @@ const Upload = () => {
         } catch (error) {
             console.error('Upload failed:', error);
             setUploadStatus('error');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const runPipeline = async () => {
+        if (!projectId) return;
+        setIsUploading(true);
+        try {
+            const response = await fetch(`http://localhost:8000/api/projects/${projectId}/run`, {
+                method: 'POST'
+            });
+            if (response.ok) {
+                alert("Pipeline triggered successfully! Redirecting to analysis...");
+                window.location.href = `/analysis?project_id=${projectId}`;
+            } else {
+                const errorData = await response.json();
+                alert(`Failed to trigger pipeline: ${errorData.detail || "Unknown error"}`);
+            }
+        } catch (error) {
+            console.error("Pipeline trigger error:", error);
+            alert("Network error: Could not connect to the AI engine.");
         } finally {
             setIsUploading(false);
         }
@@ -113,19 +142,29 @@ const Upload = () => {
                                 accept=".tif,.jpg,.jpeg,.png"
                             />
 
-                            <div className={`p-6 rounded-3xl ${isDragging ? "bg-primary text-white" : "bg-white/5 text-white/30 group-hover:bg-primary/10 group-hover:text-primary"} transition-colors shadow-sm`}>
+                            {previewUrl && (
+                                <div className="absolute inset-0 z-0">
+                                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0B1215]/90" />
+                                </div>
+                            )}
+
+                            <div className={`relative z-10 p-6 rounded-3xl ${isDragging ? "bg-primary text-white" : "bg-white/5 text-white/30 group-hover:bg-primary/10 group-hover:text-primary"} transition-colors shadow-sm`}>
                                 {isUploading ? (
                                     <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                                 ) : (
                                     <UploadIcon className="w-10 h-10" />
                                 )}
                             </div>
-                            <div className="text-center px-8">
+                            <div className="relative z-10 text-center px-8">
                                 <p className="text-lg font-bold uppercase tracking-tight">
-                                    {isUploading ? "Verifying Geospatial Integrity..." : "Select GeoTIFF or Drone imagery"}
+                                    {isUploading ? "Verifying Geospatial Integrity..." : previewUrl ? "Change Selected Image" : "Select GeoTIFF or Drone imagery"}
                                 </p>
                                 <p className="text-[#A0AEC0] text-sm font-medium mt-1">
-                                    {uploadStatus === 'success' ? "Spatial Metadata Extracted!" : "EPSG:4326, 3857, or manual alignment"}
+                                    {isUploading ? "Initializing AI Engine..." :
+                                        uploadStatus === 'success' ? "Spatial Metadata Extracted!" :
+                                            uploadStatus === 'error' ? "Extraction Failed - Check CORS/Network" :
+                                                spatialMeta?.has_spatial ? "Metadata Ready" : "Standard Imagery (EPSG:4326 assumed)"}
                                 </p>
                             </div>
                         </div>
@@ -178,8 +217,12 @@ const Upload = () => {
                                     </div>
                                 </div>
 
-                                <button className="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:shadow-xl hover:shadow-primary/20 transition-all uppercase tracking-widest text-[11px] mt-4 hover:scale-[1.02] active:scale-95">
-                                    Trigger Extraction Pipeline
+                                <button
+                                    onClick={runPipeline}
+                                    disabled={isUploading}
+                                    className="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:shadow-xl hover:shadow-primary/20 transition-all uppercase tracking-widest text-[11px] mt-4 hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+                                >
+                                    {isUploading ? "Initializing AI Engine..." : "Trigger Extraction Pipeline"}
                                 </button>
                             </div>
                         )}

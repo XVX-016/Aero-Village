@@ -4,8 +4,8 @@ geopandas
 rasterio
 shapely
 pyproj
-pdal
-whitebox
+# pdal
+# whitebox
 reportlab
 pandas
 python-multipart

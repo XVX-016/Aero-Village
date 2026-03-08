@@ -14,8 +14,20 @@ export const DroneModel = ({ position = [0, 0, 0], rotationOffset = 0, isHovered
   const { scene } = useGLTF("/models/drone/scene.gltf");
 
   // Create a distinct clone for each instance using SkeletonUtils
-  const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
-  const { nodes, materials } = useGraph(clone);
+  const clone = useMemo(() => {
+    const clonedScene = SkeletonUtils.clone(scene);
+    clonedScene.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        // Ensure material is updated for environment maps
+        if (child.material) {
+          child.material.envMapIntensity = 1.2;
+        }
+      }
+    });
+    return clonedScene;
+  }, [scene]);
 
   const modelRef = useRef<THREE.Group>(null);
 

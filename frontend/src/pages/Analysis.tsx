@@ -16,12 +16,24 @@ const Analysis = () => {
     const [planningType, setPlanningType] = useState<string | null>(null);
     const [rainfall, setRainfall] = useState(100);
     const [isSimulating, setIsSimulating] = useState(false);
+    const [isMessageLoading, setIsMessageLoading] = useState(false);
     const [budgetEstimate, setBudgetEstimate] = useState<any>(null);
+    const [projectId, setProjectId] = useState<string>("global");
 
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<maplibregl.Map | null>(null);
 
     useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const pId = urlParams.get('project_id');
+        if (pId) {
+            setProjectId(pId);
+            setMessages([
+                { role: "assistant", content: `Command Center active for Project ${pId.slice(0, 8)}. Geospatial layers syncing...` }
+            ]);
+            fetchBuildings(pId);
+        }
+
         if (!mapContainer.current || map.current) return;
 
         map.current = new maplibregl.Map({
@@ -52,13 +64,61 @@ const Analysis = () => {
         };
     }, []);
 
-    const handleSend = () => {
-        if (!input.trim()) return;
-        setMessages(prev => [...prev, { role: "user", content: input }]);
-        setTimeout(() => {
-            setMessages(prev => [...prev, { role: "assistant", content: "Analyzing spatial parameters... Cross-referencing with local elevation data." }]);
-        }, 1000);
+    const fetchBuildings = async (pId: string) => {
+        try {
+            const res = await fetch(`http://localhost:8000/api/buildings?project_id=${pId}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (map.current && data.features) {
+                    if (map.current.getSource('buildings')) {
+                        (map.current.getSource('buildings') as any).setData(data);
+                    } else {
+                        map.current.addSource('buildings', { type: 'geojson', data });
+                        map.current.addLayer({
+                            id: 'buildings-layer',
+                            type: 'fill',
+                            source: 'buildings',
+                            paint: { 'fill-color': '#3b82f6', 'fill-opacity': 0.5 }
+                        });
+                    }
+                    const bounds = new maplibregl.LngLatBounds();
+                    data.features.forEach((f: any) => {
+                        const coords = f.geometry.coordinates;
+                        if (f.geometry.type === 'Polygon') {
+                            coords[0].forEach((p: any) => bounds.extend(p));
+                        } else if (f.geometry.type === 'Point') {
+                            bounds.extend(coords);
+                        }
+                    });
+                    if (!bounds.isEmpty()) map.current.fitBounds(bounds, { padding: 50 });
+                }
+            }
+        } catch (e) {
+            console.error("Failed to auto-fetch buildings:", e);
+        }
+    };
+
+    const handleSend = async () => {
+        if (!input.trim() || isMessageLoading) return;
+        const userMessage = input;
+        setMessages(prev => [...prev, { role: "user", content: userMessage }]);
         setInput("");
+        setIsMessageLoading(true);
+
+        try {
+            const response = await fetch(`http://localhost:8000/api/rag/query`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: userMessage, project_id: projectId })
+            });
+            const data = await response.json();
+            setMessages(prev => [...prev, { role: "assistant", content: data.answer || "I'm sorry, I couldn't process that request." }]);
+        } catch (error) {
+            console.error("Chat failed:", error);
+            setMessages(prev => [...prev, { role: "assistant", content: "Connection to Intelligence Server lost." }]);
+        } finally {
+            setIsMessageLoading(false);
+        }
     };
 
     const runPlanning = async (type: 'sewage' | 'electricity') => {
@@ -68,12 +128,28 @@ const Analysis = () => {
         const mockBuildings = [
             [78.9629, 20.5937], [78.9635, 20.5942], [78.9641, 20.5932]
         ];
+        let buildingsForPlanning = mockBuildings;
+
+        try {
+            const buildingRes = await fetch(`http://localhost:8000/api/buildings?project_id=${projectId}`);
+            if (buildingRes.ok) {
+                const geojson = await buildingRes.json();
+                if (geojson.features && geojson.features.length > 0) {
+                    buildingsForPlanning = geojson.features.map((f: any) => {
+                        const coords = f.geometry.coordinates;
+                        return Array.isArray(coords[0]) ? coords[0][0] : coords;
+                    }).slice(0, 50);
+                }
+            }
+        } catch (e) {
+            console.warn("Could not fetch real buildings, using mocks");
+        }
 
         try {
             const response = await fetch(`http://localhost:8000/api/planning/${type}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ buildings: mockBuildings })
+                body: JSON.stringify({ buildings: buildingsForPlanning, project_id: projectId })
             });
             const data = await response.json();
             setBudgetEstimate(data.budgetary_estimate);
@@ -83,7 +159,6 @@ const Analysis = () => {
                 content: `Optimized ${type} network generated. Budgetary estimate: $${data.budgetary_estimate.total_estimate.toLocaleString()}. Planning compliance: ${type === 'sewage' ? '92%' : '88%'}.`
             }]);
 
-            // Add GeoJSON Layer to Map for Planning Paths
             if (map.current && data.paths) {
                 const layerId = `planning-${type}`;
                 if (map.current.getLayer(layerId)) {
@@ -128,7 +203,7 @@ const Analysis = () => {
             const response = await fetch(`http://localhost:8000/api/rag/explain`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: `Check compliance for ${type} infrastructure routing near coordinates.` })
+                body: JSON.stringify({ query: `Check compliance for ${type} infrastructure routing near coordinates.`, project_id: projectId })
             });
             const data = await response.json();
 
@@ -156,7 +231,6 @@ const Analysis = () => {
                 content: `Hydrology simulation complete for ${rainfall}mm rainfall. ${data.results.accumulation_count} potential accumulation points detected. Risk Assessment: ${data.results.risk_level}.`
             }]);
 
-            // Add Heatmap/Fill Layer for Flood Accumulation
             if (map.current && data.results.zones) {
                 const layerId = 'flood-zones';
                 if (map.current.getLayer(layerId)) {
@@ -203,7 +277,6 @@ const Analysis = () => {
             <GlobalBackground />
             <Navbar />
             <div className="flex-grow flex flex-col pt-16 relative z-10">
-                {/* Top Header */}
                 <header className="h-20 border-b border-white/10 flex items-center justify-between px-8 shrink-0 bg-[#0B1215]/80 backdrop-blur-md">
                     <div className="flex items-center space-x-4">
                         <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-primary/20">A</div>
@@ -222,11 +295,8 @@ const Analysis = () => {
                 </header>
 
                 <main className="flex-grow flex overflow-hidden">
-                    {/* GIS Viewport - 70% */}
                     <div className="flex-grow relative overflow-hidden border-r border-white/5 bg-black">
                         <div ref={mapContainer} className="absolute inset-0" />
-
-                        {/* HUD Overlays */}
                         <div className="absolute top-6 left-6 space-y-4">
                             <div className="p-5 glass rounded-[32px] border-white/10 w-64 shadow-2xl backdrop-blur-xl">
                                 <div className="flex items-center justify-between mb-4">
@@ -247,15 +317,9 @@ const Analysis = () => {
                                 </div>
                             </div>
                         </div>
-
-                        <div className="absolute bottom-6 left-6 px-4 py-2 glass rounded-2xl border-white/10 z-20">
-                            <p className="text-[10px] font-mono text-white/40 tracking-wider">VIEWPORT_ACTIVE // EPSG:4326 // GRID_AUTO_DETECT</p>
-                        </div>
                     </div>
 
-                    {/* Intelligence Sidebar - 30% */}
                     <div className="w-[420px] flex flex-col bg-[#0B1215] shrink-0 border-l border-white/5 relative">
-                        {/* Tab Switcher */}
                         <div className="flex border-b border-white/10 shrink-0">
                             {[
                                 { id: 'analysis', label: 'Intelligence' },
@@ -275,7 +339,6 @@ const Analysis = () => {
                         {activeTab === 'analysis' ? (
                             <div className="flex flex-col h-full overflow-hidden">
                                 <div className="p-6 overflow-y-auto space-y-6 flex-grow">
-                                    {/* Observation Card */}
                                     <div className="p-5 rounded-[28px] bg-white/5 border border-white/10 hover:border-primary/30 transition-all group">
                                         <div className="flex items-center justify-between mb-3">
                                             <span className="text-[10px] font-bold text-primary uppercase bg-primary/10 px-2 py-1 rounded">Observation</span>
@@ -307,11 +370,20 @@ const Analysis = () => {
                                             value={input}
                                             onChange={(e) => setInput(e.target.value)}
                                             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                            placeholder="Ask about spatial data..."
-                                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-6 pr-14 text-xs text-white focus:ring-1 focus:ring-primary focus:border-transparent outline-none transition-all"
+                                            disabled={isMessageLoading}
+                                            placeholder={isMessageLoading ? "Thinking..." : "Ask about spatial data..."}
+                                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-6 pr-14 text-xs text-white focus:ring-1 focus:ring-primary focus:border-transparent outline-none transition-all disabled:opacity-50"
                                         />
-                                        <button onClick={handleSend} className="absolute right-2 top-2 p-2 bg-primary text-white rounded-xl hover:scale-105 transition-transform">
-                                            <Send className="w-4 h-4" />
+                                        <button
+                                            onClick={handleSend}
+                                            disabled={isMessageLoading}
+                                            className="absolute right-2 top-2 p-2 bg-primary text-white rounded-xl hover:scale-105 transition-transform disabled:opacity-50"
+                                        >
+                                            {isMessageLoading ? (
+                                                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                            ) : (
+                                                <Send className="w-4 h-4" />
+                                            )}
                                         </button>
                                     </div>
                                 </div>
@@ -391,7 +463,7 @@ const Analysis = () => {
                                 </div>
 
                                 {budgetEstimate && (
-                                    <div className="mt-8 p-8 rounded-[32px] bg-white/5 border border-white/10 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                    <div className="p-8 rounded-[32px] bg-white/5 border border-white/10 space-y-6 animate-fade-in shadow-2xl">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
                                                 <TrendingUp className="w-5 h-5 text-emerald-400" />
@@ -497,9 +569,9 @@ const Analysis = () => {
                         )}
                     </div>
                 </main>
-                <Footer />
-            </div >
-        </div >
+            </div>
+            <Footer />
+        </div>
     );
 };
 

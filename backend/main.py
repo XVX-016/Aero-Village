@@ -1,3 +1,5 @@
+import shutil
+import subprocess
 import json
 import hashlib
 import logging
@@ -37,7 +39,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -436,6 +438,40 @@ async def project_artifacts(project_id: str) -> Dict[str, Any]:
     }
 
 
+@app.post("/api/projects/{project_id}/run")
+async def run_project_pipeline(
+    project_id: str,
+    background_tasks: BackgroundTasks,
+    weights_path: Optional[str] = None,
+    tile_size: int = 512,
+    threshold: float = 0.5,
+    seed: int = 42,
+) -> Dict[str, Any]:
+    status = _read_status(project_id)
+    if status.get("status") == "running":
+        return {"status": "already_running", "project_id": project_id}
+
+    resolved_weights = Path(weights_path) if weights_path else DEFAULT_WEIGHTS
+    input_file = status.get("input_file")
+    if not input_file or not Path(input_file).exists():
+        raise HTTPException(status_code=400, detail="Input file not found for this project")
+
+    _write_status(
+        project_id,
+        "queued",
+        input_file=input_file,
+        queue_params={
+            "input_file": input_file,
+            "weights_file": str(resolved_weights),
+            "tile_size": tile_size,
+            "threshold": threshold,
+            "seed": seed,
+        },
+    )
+    background_tasks.add_task(_run_queued_job_from_status, project_id, _read_status(project_id))
+    return {"status": "success", "message": "Pipeline queued", "project_id": project_id}
+
+
 @app.post("/api/projects/{project_id}/ingest")
 async def ingest_project_outputs(
     project_id: str,
@@ -690,14 +726,23 @@ async def upload_image(
 
     spatial_metadata = {"has_spatial": False, "crs": None, "bounds": None, "centroid": None}
     try:
+        import rasterio.warp
         with rasterio.open(temp_path) as src:
             if src.crs:
+                # Transform bounds to EPSG:4326 for frontend map consistency
                 bounds = src.bounds
+                if src.crs.to_string() != "EPSG:4326":
+                    left, bottom, right, top = rasterio.warp.transform_bounds(
+                        src.crs, "EPSG:4326", bounds.left, bounds.bottom, bounds.right, bounds.top
+                    )
+                else:
+                    left, bottom, right, top = bounds.left, bounds.bottom, bounds.right, bounds.top
+                
                 spatial_metadata = {
                     "has_spatial": True,
                     "crs": src.crs.to_string(),
-                    "bounds": [bounds.left, bounds.bottom, bounds.right, bounds.top],
-                    "centroid": [(bounds.left + bounds.right) / 2, (bounds.bottom + bounds.top) / 2],
+                    "bounds": [left, bottom, right, top],
+                    "centroid": [(left + right) / 2, (bottom + top) / 2],
                 }
     except Exception as exc:
         logger.exception("Failed reading raster metadata for %s: %s", temp_path, exc)
@@ -708,28 +753,32 @@ async def upload_image(
         filename=file.filename,
         input_file=str(temp_path),
         has_spatial=spatial_metadata["has_spatial"],
+        spatial_metadata=spatial_metadata
     )
 
     if run_pipeline:
         resolved_weights = Path(weights_path) if weights_path else DEFAULT_WEIGHTS
         if not resolved_weights.exists():
             raise HTTPException(status_code=400, detail=f"Model weights not found: {resolved_weights}")
+        
+        # Save parameters for later retrieval
+        _write_status(
+            project_id,
+            "queued",
+            input_file=str(temp_path),
+            queue_params={
+                "input_file": str(temp_path),
+                "weights_file": str(resolved_weights),
+                "tile_size": tile_size,
+                "threshold": threshold,
+                "seed": seed,
+            },
+            spatial_metadata=spatial_metadata
+        )
+        
         if wait_for_completion:
             _run_pipeline_job(project_id, temp_path, resolved_weights, tile_size, threshold, seed)
         else:
-            _write_status(
-                project_id,
-                "queued",
-                input_file=str(temp_path),
-                queue_params={
-                    "input_file": str(temp_path),
-                    "weights_file": str(resolved_weights),
-                    "tile_size": tile_size,
-                    "threshold": threshold,
-                    "seed": seed,
-                },
-            )
-            # Opportunistic immediate execution; worker still provides durability for queued runs.
             background_tasks.add_task(_run_queued_job_from_status, project_id, _read_status(project_id))
 
     return {
@@ -738,6 +787,7 @@ async def upload_image(
         "filename": file.filename,
         "spatial_metadata": spatial_metadata,
         "pipeline_status": _read_status(project_id)["status"],
+        "message": "Image uploaded successfully. " + ("Spatial metadata found." if spatial_metadata["has_spatial"] else "No spatial metadata found (Standard JPG/PNG). AI extraction will use local pixel coordinates.")
     }
 
 

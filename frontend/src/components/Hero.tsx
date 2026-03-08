@@ -32,6 +32,7 @@ export const Hero = () => {
                     <pointLight position={[-10, -10, -10]} intensity={0.8} color="#bae6fd" />
 
                     <Suspense fallback={null}>
+                        <Environment preset="city" />
                         {/* Single Centered Drone */}
                         <DroneModel position={[0, 0, 0]} rotationOffset={0} isHovered={isHeroHovered} />
                     </Suspense>
